@@ -1,0 +1,54 @@
+
+services:
+  fruit-service:
+    build: ./product
+    volumes:
+      - ./product:/usr/src/app
+    ports:
+      - 5001:80
+    environment:
+      DB_HOST: db
+      DB_NAME: freshmartdb
+      DB_USER: admin
+      DB_PASSWORD: mysecret  
+    depends_on:
+      - db  
+
+  vegetable-service:
+    build: ./vegetable
+    volumes: 
+      - ./vegetable:/usr/src/app
+    ports:
+      - 5003:80 
+    environment:
+      DB_HOST: db
+      DB_NAME: freshmartdb
+      DB_USER: admin
+      DB_PASSWORD: mysecret  
+    depends_on:
+      - db  
+
+  website:
+    image: php:apache
+    volumes:
+      - ./website:/var/www/html
+    ports: 
+      - 5002:80    
+    depends_on :
+      - fruit-service 
+      - vegetable-service
+
+  db: 
+    image: postgres:17
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: mysecret
+      POSTGRES_DB: freshmartdb
+    volumes:
+      - PGDATA:/var/lib/postgresql/data
+
+volumes:
+  PGDATA:       
+

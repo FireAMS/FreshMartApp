@@ -1,0 +1,70 @@
+name: FreshMart CI/CD
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  ci:
+    name: C I
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name:  Build all services and Start containers
+        run: docker compose up -d --build
+
+      - name: Display container logs
+        if: always()
+        run: docker compose logs
+
+      - name: Test Fruit API
+        run: curl http://localhost:5001
+
+      - name: Test Vegetable API
+        run: curl http://localhost:5003
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down
+
+  dockerhub:
+    name: Push Images to Docker Hub
+    needs: ci
+    runs-on: ubuntu-latest
+
+    # Only push images when code is pushed to master.
+    # Pull requests will run CI but won't publish images.
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Fruit Service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./product
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/fruit-service:latest
+
+      - name: Build and push Vegetable Service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./vegetable
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/vegetable-service:latest

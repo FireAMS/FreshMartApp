@@ -17,18 +17,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name:  Build all services and Start containers
-        run: docker compose up -d --build
+      - name:  Build all services 
+        run: docker compose build
+
+      - name: Start containers
+        run: docker compose up -d
 
       - name: Display container logs
         if: always()
         run: docker compose logs
 
       - name: Test Fruit API
-        run: curl http://localhost:5001
+        run: curl --fail http://localhost:5001
 
       - name: Test Vegetable API
-        run: curl http://localhost:5003
+        run: curl --fail http://localhost:5003
 
       - name: Stop containers
         if: always()

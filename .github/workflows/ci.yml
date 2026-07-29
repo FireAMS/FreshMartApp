@@ -31,7 +31,7 @@ jobs:
         run: curl --fail http://localhost:5001
 
       - name: Test Vegetable API
-        run: curl --fail http://localhost:5003
+        run: curl --fail http://localhost:5003/vegetables
 
       - name: Stop containers
         if: always()

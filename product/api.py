@@ -47,6 +47,12 @@ class Fruits(Resource):
 # adds the resources at the root route
 api.add_resource(Fruits, '/')
 
+class Health(Resource):
+    def get(self):
+        return {"status": "healthy"}, 200
+    
+api.add_resource(Health, '/health')
+
 # if this file is being executed then run the service
 if __name__ == '__main__':
     # run the service

@@ -6,13 +6,19 @@ services:
       - ./product:/usr/src/app
     ports:
       - 5001:80
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     environment:
       DB_HOST: db
       DB_NAME: freshmartdb
       DB_USER: admin
       DB_PASSWORD: mysecret  
     depends_on:
-      - db  
+      db:
+        condition: service_healthy 
 
   vegetable-service:
     build: ./vegetable
@@ -20,13 +26,20 @@ services:
       - ./vegetable:/usr/src/app
     ports:
       - 5003:80 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3  
     environment:
       DB_HOST: db
       DB_NAME: freshmartdb
       DB_USER: admin
       DB_PASSWORD: mysecret  
     depends_on:
-      - db  
+      db:
+        condition: service_healthy 
+
 
   website:
     image: php:apache
@@ -34,12 +47,19 @@ services:
       - ./website:/var/www/html
     ports: 
       - 5002:80    
-    depends_on :
-      - fruit-service 
-      - vegetable-service
+    depends_on:
+      fruit-service:
+        condition: service_healthy
+      vegetable-service:
+        condition: service_healthy
 
   db: 
     image: postgres:17
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d freshmartdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - 5432:5432
     environment:

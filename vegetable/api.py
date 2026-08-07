@@ -7,6 +7,7 @@ import time
 app = Flask(__name__)
 api = Api(app)
 
+
 def get_db_connection():
     retries = 5
     while retries > 0:
@@ -42,6 +43,12 @@ class Vegetables(Resource):
             return {'error': str(e)}, 500
 
 api.add_resource(Vegetables, '/vegetables')
+
+class Health(Resource):
+    def get(self):
+        return {"status": "healthy"}, 200
+    
+api.add_resource(Health, '/health')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80, debug=True)

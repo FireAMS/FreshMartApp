@@ -233,7 +233,9 @@
             <h2>🍎 Fruits</h2>
         </div>
         <?php
-            $fruitsData = @file_get_contents('http://fruit-service');
+            $fruitHost = getenv('FRUIT_SERVICE_URL') ?: 'fruit-service';
+            $fruitServiceUrl = str_starts_with($fruitHost, 'http') ? $fruitHost : "http://$fruitHost";
+            $fruitsData = @file_get_contents($fruitServiceUrl);
             if ($fruitsData === false):
         ?>
             <div class="service-error">
@@ -284,7 +286,9 @@
             <h2>🥦 Vegetables</h2>
         </div>
         <?php
-            $vegsData = @file_get_contents('http://vegetable-service/vegetables');
+            $vegHost = getenv('VEG_SERVICE_URL') ?: 'vegetable-service';
+            $vegServiceUrl = (str_starts_with($vegHost, 'http') ? $vegHost : "http://$vegHost") . '/vegetables';
+            $vegsData = @file_get_contents($vegServiceUrl);
             if ($vegsData === false):
         ?>
             <div class="service-error">

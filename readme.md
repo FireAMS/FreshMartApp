@@ -6,7 +6,13 @@
 ![PHP](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 
-> A containerized microservices application built with Flask, PHP, PostgreSQL, Docker Compose, and GitHub Actions.
+> A containerized microservices application built with Flask, PHP, PostgreSQL, Docker Compose, GitHub Actions, Docker Hub, and Render.
+
+## 🌐 Live Demo
+
+**[Launch FreshMart](https://freshmart-website-wlo8.onrender.com/)**
+
+The application is deployed on Render and serves the FreshMart frontend with data provided by the fruit and vegetable microservices.
 
 ---
 
@@ -31,7 +37,7 @@ FreshMart consists of a PHP frontend, two Flask REST services, and a PostgreSQL 
 | `vegetable-service` | Python + Flask | Vegetable REST API | 5003 | 80 |
 | `db` | PostgreSQL 17 | Database | 5432 | 5432 |
 
-> Each application container listens on port `80` internally. Docker maps these to different host ports (`5001`, `5002`, and `5003`).
+> Each application container listens on port `80` internally. Docker maps these to different host ports.
 
 ---
 
@@ -55,7 +61,11 @@ FreshMartApp/
 │   ├── api.py
 │   └── requirements.txt
 ├── website/
+│   ├── Dockerfile
 │   └── index.php
+├── screenshots/
+│   ├── FreshMart_ArchitectureDiagram.png
+│   └── Freshmart.png
 ├── docker-compose.yml
 └── README.md
 ```
@@ -96,7 +106,7 @@ docker compose up --build
 docker compose down
 ```
 
-PostgreSQL is initialized from the SQL scripts in `db/` on the first database startup, and data is persisted using a Docker volume.
+PostgreSQL is initialized from the SQL scripts in `db/` on the first database startup, with data persisted using a Docker volume.
 
 ---
 
@@ -112,7 +122,44 @@ The CI workflow:
 4. Tests the Fruit and Vegetable APIs with `curl`
 5. Stops the containers
 
-On a successful push to `master`, the workflow also builds and publishes the Fruit and Vegetable Docker images to Docker Hub.
+On a successful push to `master`, the workflow also builds and publishes the Docker images to Docker Hub.
+
+Render is connected to the GitHub repository with automatic deployment enabled. When changes are pushed to `master`, Render automatically builds the configured Docker services and deploys them to production.
+
+### Deployment Flow
+
+```text
+
+
+                         Git Push
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+       GitHub Actions                   Render
+              │                           │
+        ┌─────┴─────┐                ┌────┴────┐
+        ▼           ▼                ▼         ▼
+      Build        Test            Build     Deploy
+        │           │                │         │
+        └─────┬─────┘                └────┬────┘
+              ▼                           ▼
+        Docker Hub                   Production
+```
+
+### Production Services
+
+| Service | Technology | Platform |
+|---|---|---|
+| Frontend | PHP 8.5 + Apache | Render |
+| Fruit API | Flask | Render |
+| Vegetable API | Flask | Render |
+| Database | PostgreSQL 17 | Render |
+
+Production configuration and database credentials are managed through environment variables rather than stored in the source code.
+
+### 🌐 Production Website
+
+**[Launch FreshMart](https://freshmart-website-wlo8.onrender.com/)**
 
 ---
 
@@ -127,7 +174,7 @@ On a successful push to `master`, the workflow also builds and publishes the Fru
 
 - Kubernetes deployment
 - Infrastructure with Terraform
-- Cloud deployment
+- AWS cloud deployment
 
 ---
 
@@ -135,7 +182,7 @@ On a successful push to `master`, the workflow also builds and publishes the Fru
 
 **Audrey**
 
-- GitHub: https://github.com/FireAMS
+- [GitHub @FireAMS](https://github.com/FireAMS)
 
 ---
 

@@ -18,6 +18,7 @@ spec:
       containers:
       - name: fruit-service
         image: fireams/fruit-service:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
         env:

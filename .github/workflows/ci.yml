@@ -82,6 +82,14 @@ jobs:
       # Create temporary Kubernetes cluster.
       - name: Create kind cluster
         uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+
+      - name: Verify kind cluster
+        run: |
+          kind get clusters
+          kubectl cluster-info
+          kubectl get nodes
 
       # Load locally built images into kind.
       - name: Load images into kind

@@ -18,6 +18,7 @@ spec:
       containers:
       - name: vegetable-service
         image: fireams/vegetable-service:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
         env:

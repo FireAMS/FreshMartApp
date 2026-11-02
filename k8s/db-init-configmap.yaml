@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init-scripts
+  namespace: freshmart
+data:
+  01-schema.sql: |
+    CREATE TABLE IF NOT EXISTS fruits (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(35),
+        category VARCHAR(20),
+        season VARCHAR(20)
+    );
+
+    CREATE TABLE IF NOT EXISTS vegetables (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(35),
+        category VARCHAR(20),
+        season VARCHAR(20)
+    );
+  02-fruits.sql: |
+    INSERT INTO fruits (name, category, season) VALUES
+        ('Mango', 'Tropical', 'Summer'),
+        ('Orange', 'Citrus', 'Winter'),
+        ('Litchi', 'Tropical', 'Summer'),
+        ('Pomegranate', 'Berry', 'Autumn');
+  03-vegetables.sql: |
+    INSERT INTO vegetables (name, category, season) VALUES
+        ('Carrot', 'Root', 'Winter'),
+        ('Broccoli', 'Cruciferous', 'Winter'),
+        ('Spinach', 'Leafy', 'Spring'),
+        ('Tomato', 'Fruit-veg', 'Summer');

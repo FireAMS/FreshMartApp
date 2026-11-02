@@ -118,10 +118,36 @@ jobs:
       # Verify deployment rollout.
       - name: Wait for deployments
         run: |
-          for d in $(kubectl get deployments -n freshmart -o name); do
-            kubectl rollout status "$d" -n freshmart --timeout=240s
-          done
+          kubectl rollout status deployment/db-deployment \
+            -n freshmart --timeout=240s
 
+          kubectl rollout status deployment/fruit-service \
+            -n freshmart --timeout=240s
+
+          kubectl rollout status deployment/vegetable-service \
+            -n freshmart --timeout=240s
+
+          kubectl rollout status deployment/frontend-deployment \
+            -n freshmart --timeout=240s
+
+      # verify posgresql pod is running    
+      - name: Diagnose PostgreSQL
+        if: failure()
+        run: |
+          echo "=== PVC STATUS ==="
+          kubectl get pvc -n freshmart
+
+          echo "=== DATABASE POD ==="
+          kubectl get pods -n freshmart -l app=postgresql -o wide
+
+          echo "=== DATABASE DESCRIPTION ==="
+          kubectl describe pods -n freshmart -l app=postgresql
+
+          echo "=== DATABASE LOGS ==="
+          kubectl logs deployment/db-deployment -n freshmart --tail=100 || true
+
+          echo "=== EVENTS ==="
+          kubectl get events -n freshmart --sort-by=.metadata.creationTimestamp
       # Verify pods.
       - name: Check Kubernetes resources
         run: |

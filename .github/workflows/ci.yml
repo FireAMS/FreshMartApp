@@ -8,47 +8,189 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
+
+  # ==========================================
+  # JOB 1: Docker Compose CI
+  # ==========================================
+
   ci:
-    name: C I
+    name: Docker Compose CI
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name:  Build all services 
+      - name: Build all services
         run: docker compose build
 
       - name: Start containers
         run: docker compose up -d
 
+      - name: Test Fruit API
+        run: |
+          curl --retry 15 --retry-delay 2 --retry-connrefused \
+            --fail http://localhost:5001/
+
+      - name: Test Vegetable API
+        run: |
+          curl --retry 15 --retry-delay 2 --retry-connrefused \
+            --fail http://localhost:5003/vegetables
+
       - name: Display container logs
         if: always()
         run: docker compose logs
-
-      - name: Test Fruit API
-        run: curl --fail http://localhost:5001
-
-      - name: Test Vegetable API
-        run: curl --fail http://localhost:5003/vegetables
 
       - name: Stop containers
         if: always()
         run: docker compose down
 
-  dockerhub:
-    name: Push Images to Docker Hub
+
+  # ==========================================
+  # JOB 2: Kubernetes Integration Testing
+  # ==========================================
+
+  kubernetes:
+    name: Kubernetes Integration Tests
     needs: ci
     runs-on: ubuntu-latest
 
-    # Only push images when code is pushed to master.
-    # Pull requests will run CI but won't publish images.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build images specifically for the temporary cluster.
+      - name: Build Fruit Service
+        run: |
+          docker build -t fireams/fruit-service:ci-${GITHUB_SHA} ./product
+
+      - name: Build Vegetable Service
+        run: |
+          docker build -t fireams/vegetable-service:ci-${GITHUB_SHA} ./vegetable
+
+      - name: Build Website
+        run: |
+          docker build -t fireams/freshmart-website:ci-${GITHUB_SHA} ./website
+
+      # Create temporary Kubernetes cluster.
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+
+      # Load locally built images into kind.
+      - name: Load images into kind
+        run: |
+          kind load docker-image fireams/fruit-service:ci-${GITHUB_SHA}
+          kind load docker-image fireams/vegetable-service:ci-${GITHUB_SHA}
+          kind load docker-image fireams/freshmart-website:ci-${GITHUB_SHA}
+
+      # Deploy application.
+      - name: Deploy FreshMart
+        run: |
+          kubectl apply -f k8s/
+
+          kubectl set image deployment/fruit-service \
+            fruit-service=fireams/fruit-service:ci-${GITHUB_SHA} \
+            -n freshmart
+
+          kubectl set image deployment/vegetable-service \
+            vegetable-service=fireams/vegetable-service:ci-${GITHUB_SHA} \
+            -n freshmart
+
+          kubectl set image deployment/frontend-deployment \
+            frontend=fireams/freshmart-website:ci-${GITHUB_SHA} \
+            -n freshmart
+
+      # Verify deployment rollout.
+      - name: Wait for deployments
+        run: |
+          for d in $(kubectl get deployments -n freshmart -o name); do
+            kubectl rollout status "$d" -n freshmart --timeout=240s
+          done
+
+      # Verify pods.
+      - name: Check Kubernetes resources
+        run: |
+          kubectl get all -n freshmart
+          kubectl get pvc -n freshmart
+
+      # Test application through Kubernetes Services.
+      - name: Test FreshMart endpoints
+        shell: bash
+        run: |
+          kubectl port-forward -n freshmart svc/fruit-service 5001:80 \
+            >/tmp/fruit.log 2>&1 &
+          FRUIT_PID=$!
+
+          kubectl port-forward -n freshmart svc/vegetable-service 5003:80 \
+            >/tmp/vegetable.log 2>&1 &
+          VEGETABLE_PID=$!
+
+          kubectl port-forward -n freshmart svc/frontend-service 8080:80 \
+            >/tmp/frontend.log 2>&1 &
+          FRONTEND_PID=$!
+
+          trap 'kill $FRUIT_PID $VEGETABLE_PID $FRONTEND_PID 2>/dev/null || true' EXIT
+
+          echo "Waiting for services..."
+
+          curl --retry 15 --retry-delay 2 --retry-connrefused \
+            --fail http://localhost:5001/
+
+          curl --retry 15 --retry-delay 2 --retry-connrefused \
+            --fail http://localhost:5003/vegetables
+
+          curl --retry 15 --retry-delay 2 --retry-connrefused \
+            --fail http://localhost:8080/
+
+          echo "All Kubernetes endpoint tests passed!"
+
+      # Diagnostics if something fails.
+      - name: Show cluster state on failure
+        if: failure()
+        run: |
+          kubectl get pods -n freshmart
+          kubectl get services -n freshmart
+          kubectl get deployments -n freshmart
+
+          kubectl describe pods -n freshmart
+
+          kubectl logs -n freshmart \
+            --all-containers=true \
+            --tail=50 \
+            --all-pods=true || true
+
+
+  # ==========================================
+  # JOB 3: Publish Images to Docker Hub
+  # ==========================================
+
+  dockerhub:
+    name: Publish Images to Docker Hub
+    needs:
+      - ci
+      - kubernetes
+
+    runs-on: ubuntu-latest
+
+    # Publish only on successful pushes to master.
     if: github.event_name == 'push'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -60,14 +202,28 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./product
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/fruit-service:latest
+            fireams/fruit-service:latest
+            fireams/fruit-service:${{ github.sha }}
 
       - name: Build and push Vegetable Service
         uses: docker/build-push-action@v6
         with:
           context: ./vegetable
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/vegetable-service:latest
+            fireams/vegetable-service:latest
+            fireams/vegetable-service:${{ github.sha }}
+
+      - name: Build and push Website
+        uses: docker/build-push-action@v6
+        with:
+          context: ./website
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            fireams/freshmart-website:latest
+            fireams/freshmart-website:${{ github.sha }}

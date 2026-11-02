@@ -91,6 +91,21 @@ jobs:
           kubectl cluster-info
           kubectl get nodes
 
+      - name: Create namespace
+        run: kubectl apply -f k8s/00-namespace.yaml
+
+      - name: Create PostgreSQL Secret
+        env:
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        run: |
+          kubectl create secret generic postgres-secret \
+            --namespace freshmart \
+            --from-literal=DB_USER="$DB_USER" \
+            --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+            --from-literal=DB_NAME="$DB_NAME"    
+
       # Load locally built images into kind.
       - name: Load images into kind
         run: |
